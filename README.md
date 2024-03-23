@@ -1,1 +1,1 @@
-# stock-prediction
+Turi pari zemi pari (TPZP)
