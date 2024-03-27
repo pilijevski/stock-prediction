@@ -36,6 +36,16 @@ def fetch_html_content(url):
         raise requests.exceptions.RequestException(e)
 
 
+def extract_numerical_columns(df):
+    numerical_columns = []
+    for col in df.columns:
+        try:
+            pd.to_numeric(df[col], errors='raise')
+            numerical_columns.append(col)
+        except ValueError:
+            pass
+    return numerical_columns
+
 def extract_table_data(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
     table = soup.find('table')
@@ -97,3 +107,21 @@ def process_df(df):
     df = df.T.drop_duplicates().T  # drop duplicate columns
 
     return df
+
+def get_cols_to_be_divided_by_total_assets():
+    return ['Cash & Equivalents', 'Short-Term Investments', 'Cash & Cash Equivalents', 'Receivables',
+            'Inventory','Other Current Assets','Total Current Assets','Property, Plant & Equipment',
+            'Long-Term Investments','Goodwill and Intangibles','Other Long-Term Assets','Total Long-Term Assets',
+            'Total Assets','Accounts Payable','Deferred Revenue','Current Debt','Other Current Liabilities',
+            'Total Current Liabilities','Long-Term Debt','Other Long-Term Liabilities','Total Long-Term Liabilities','Total Liabilities',
+            'Total Debt','Common Stock','Retained Earnings','Comprehensive Income',"Shareholders' Equity",'Working Capital','Net Income',
+            'Depreciation & Amortization','Share-Based Compensation','Other Operating Activities','Operating Cash Flow',
+            'Capital Expenditures','Acquisitions','Change in Investments','Other Investing Activities','Investing Cash Flow',
+            'Dividends Paid','Other Financing Activities','Financing Cash Flow','Exchange Rate Effect','Net Cash Flow','Free Cash Flow',
+            'Revenue','Revenue Growth (YoY)','Cost of Revenue','Gross Profit','Selling, General & Admin','Research & Development',
+            'Other Operating Expenses','Operating Expenses','Operating Income','Pretax Income','Income Tax','Net Income.1',
+            'Shares Outstanding (Basic)','Shares Outstanding (Diluted)','Free Cash Flow.1','Gross Margin',
+            'Operating Margin','Profit Margin','Free Cash Flow Margin.1','Effective Tax Rate','EBITDA','EBITDA Margin',
+            'Depreciation & Amortization.1','EBIT','EBIT Margin','Market Capitalization','Enterprise Value',
+            'Net Income Common','Goodwill','Intangible Assets','Total Liabilities and Equity','Common Stock Issued',
+            'Share Repurchases','Interest Income','Interest Expense','Asset Turnover']
