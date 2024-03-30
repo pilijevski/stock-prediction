@@ -2,4 +2,4 @@
 .idea/
 .ipynb_checkpoints/
 *.pyc
-libs/stocks/*
+lib/stocks/*
