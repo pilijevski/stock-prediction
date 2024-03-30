@@ -1,22 +1,36 @@
 from .helpers import get_stock_data, get_stock_symbols
 import pandas as pd
+import os
 import yfinance as yf
 import numpy as np
 from pandas.tseries.offsets import DateOffset
+from datetime import date
+
 from tqdm import tqdm
 DOC_TYPES = ["balance-sheet", "cash-flow-statement", "income_statement", "ratios"]
 
 def build_stocks(stocks_path):
+    today = date.today()
+
+    today_str = today.strftime("%Y-%m-%d")
+
     stock_names = list(get_stock_symbols())
     stock_list = []
+    if not os.path.exists("lib/stocks/{today_str}"):
+        os.makedirs(f"lib/stocks/{today_str}", exist_ok=True)
+
     with tqdm(total=len(stock_names)) as pbar:
         for ticker in stock_names:
             pbar.set_description(f"{ticker}")
             pbar.update(1)
-            stock_data = get_stock_data(ticker)
+            if not os.path.exists(f"lib/stocks/{today_str}/{ticker}.csv"):
+                stock_data = get_stock_data(ticker)
+                stock_data.to_csv(f"lib/stocks/{today_str}/{ticker}.csv")
+            else:
+                stock_data = pd.read_csv(f"lib/stocks/{today_str}/{ticker}.csv",index_col=0)
             stock_list.append(stock_data)
             
-    return pd.concat(stock_list, axis=1).to_csv(stocks_path)
+    return pd.concat(stock_list,axis=0).to_csv(stocks_path)
 
 def get_meta_data(stock_symbols, stocks):
     meta_data = []
