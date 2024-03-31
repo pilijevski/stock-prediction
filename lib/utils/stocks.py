@@ -4,6 +4,7 @@ import os
 import yfinance as yf
 import numpy as np
 from pandas.tseries.offsets import DateOffset
+import requests
 from datetime import date
 
 from tqdm import tqdm
@@ -24,8 +25,12 @@ def build_stocks(stocks_path):
             pbar.set_description(f"{ticker}")
             pbar.update(1)
             if not os.path.exists(f"lib/stocks/{today_str}/{ticker}.csv"):
-                stock_data = get_stock_data(ticker)
-                stock_data.to_csv(f"lib/stocks/{today_str}/{ticker}.csv")
+                try:
+                    stock_data = get_stock_data(ticker)
+                    stock_data.to_csv(f"lib/stocks/{today_str}/{ticker}.csv")
+                except Exception as e:
+                    print(f"Error with ticker: {ticker}")
+                    continue
             else:
                 stock_data = pd.read_csv(f"lib/stocks/{today_str}/{ticker}.csv",index_col=0)
             stock_list.append(stock_data)
