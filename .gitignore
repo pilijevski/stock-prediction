@@ -3,3 +3,4 @@
 .ipynb_checkpoints/
 *.pyc
 lib/stocks/*
+__pycache__/*
