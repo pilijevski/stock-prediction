@@ -20,6 +20,29 @@ def get_snp_companies(subset='500'):
     return tickers
 
 
+def get_earnings_release_dates(ticker, company_tickers, headers):
+
+    cik_id = str(company_tickers[company_tickers["ticker"] == ticker].index[0])
+
+    cik_str=str(cik_id).zfill(10) # we use zfill since the company number must be 10 digits long
+
+    companyFacts = requests.get(
+        f'https://data.sec.gov/api/xbrl/companyfacts/CIK{cik_str}.json',
+        headers=headers
+        )
+    for k in companyFacts.json()["facts"]["us-gaap"].keys():
+        try:
+            df = pd.DataFrame(companyFacts.json()["facts"]["us-gaap"][k]["units"]["USD"]).set_index("filed").sort_values(by='filed')
+            df.index = pd.to_datetime(df.index)
+            df = df.loc[df.form.str.contains("10-K") | df.form.str.contains("10-Q")].loc['2020-01-01':]
+            if len(df) > 40:
+                break
+        except:
+            continue
+    df['f'] = df.index
+    df = df.drop_duplicates(subset='f')
+    return df
+
 def get_stock_symbols():
     stock_symbols = get_snp_companies('500') + get_snp_companies('400') + get_snp_companies('600')
     stock_symbols = set(stock_symbols)

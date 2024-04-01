@@ -1,39 +1,42 @@
-from .helpers import get_stock_data, get_stock_symbols
+import requests
+from .helpers import get_stock_data, get_stock_symbols, get_earnings_release_dates
 import pandas as pd
-import os
 import yfinance as yf
 import numpy as np
 from pandas.tseries.offsets import DateOffset
+from tqdm import tqdm
 from datetime import date
 
-from tqdm import tqdm
 DOC_TYPES = ["balance-sheet", "cash-flow-statement", "income_statement", "ratios"]
 
 def build_stocks(stocks_path):
-    today = date.today()
-
-    today_str = today.strftime("%Y-%m-%d")
-
-    stock_names = list(get_stock_symbols())
+    stock_names = list(get_stock_symbols()[:10])
     stock_list = []
-    if not os.path.exists("lib/stocks/{today_str}"):
-        os.makedirs(f"lib/stocks/{today_str}", exist_ok=True)
-
     with tqdm(total=len(stock_names)) as pbar:
         for ticker in stock_names:
             pbar.set_description(f"{ticker}")
             pbar.update(1)
-            if not os.path.exists(f"lib/stocks/{today_str}/{ticker}.csv"):
+            try:
                 stock_data = get_stock_data(ticker)
-                stock_data.to_csv(f"lib/stocks/{today_str}/{ticker}.csv")
-            else:
-                stock_data = pd.read_csv(f"lib/stocks/{today_str}/{ticker}.csv",index_col=0)
+            except:
+                print(ticker, 'not successful')
+                continue
             stock_list.append(stock_data)
             
-    return pd.concat(stock_list,axis=0).to_csv(stocks_path)
+    return pd.concat(stock_list, axis=0).to_csv(stocks_path)
+
+
+
 
 def get_meta_data(stock_symbols, stocks):
     meta_data = []
+    N = 0
+    headers = {'User-Agent': "email@address.com"}
+    companyTickers = requests.get(
+        "https://www.sec.gov/files/company_tickers.json",
+        headers=headers
+        )
+    company_tickers = pd.DataFrame(companyTickers.json()).T.set_index("cik_str")
     for ticker in tqdm(stock_symbols):
         try:
             stock = yf.Ticker(ticker)
@@ -41,7 +44,13 @@ def get_meta_data(stock_symbols, stocks):
         except:
             continue
         stock_periods = stocks[stocks.ticker == ticker].index
-
+        stock_periods
+        
+        try:
+            d = get_earnings_release_dates(ticker, company_tickers, headers)
+        except Exception as e:
+            print("Error in getting earnings dates", e, ticker)
+            continue
         if len(stock_periods) < 8:
             print(f'The stock with ticker:{ticker} has less than 8 periods reported')
             continue
@@ -87,26 +96,47 @@ def get_meta_data(stock_symbols, stocks):
                 sector = stock_info['sectorKey']
             except:
                 sector = np.nan
-            stock_features += [stock_periods[i], ticker, industry, sector, fte, auditrisk, compensationrisk,
+            
+            try:
+                sector = stock_info['sectorKey']
+            except:
+                sector = np.nan
+            try:
+                earnings_date = pd.Timestamp(d.loc[stock_periods[i]:].index.unique().values[0]) + DateOffset(days=1)
+            except Exception as e:
+                print(e, ticker, "earnings_date=pd.Timestamp")
+                continue
+            # earnings_date = pd.Timestamp(d[stock_periods[i]:].index.values[0]) + DateOffset(days=1)
+            stock_features += [stock_periods[i], earnings_date, ticker, industry, sector, fte, auditrisk, compensationrisk,
                             boardrisk, shareholderrightsrisk, maxage, dividends]
-            hist = stock.history(start=stock_periods[i] - DateOffset(months=3), end=stock_periods[i])
+            
+            hist = stock.history(start=earnings_date - DateOffset(months=3), end=earnings_date)
             try:
                 hist['week_number'] = hist.index.week
             except:
                 continue
             weekly_mean_close = hist.groupby('week_number')['Close'].mean()
             stock_features += list(weekly_mean_close.values[:10])
-            stock_feature_columns = ['end_of_quarter','ticker', 'industry', 'sector', 'fte', 'auditrisk',
+            stock_feature_columns = ['end_of_quarter', 'end_of_quarter_release', 'ticker', 'industry', 'sector', 'fte', 'auditrisk',
                                     'compensationrisk', 'boardrisk', 'shareholderrightsrisk',
                                     'maxage', 'dividends'] + [f'weekly_price_{w}' for w in range(len(list(weekly_mean_close.values[:10])))] + ['increase']
 
             try:
-                hist = stock.history(start=stock_periods[i], end=stock_periods[i] + DateOffset(months=3))
+                hist = stock.history(start=earnings_date, end=earnings_date + DateOffset(months=6))
                 next_quarter_increase = (hist['Close'][-1] - hist['Close'][0]) / hist['Close'][0]
+                today = date.today()
+
+                today_str = today.strftime("%Y-%m-%d")
+                if (earnings_date + DateOffset(months=6)) > pd.Timestamp(today_str):
+                    next_quarter_increase = np.nan
                 stock_features += [next_quarter_increase]
                 meta_data.append(stock_features)
-            except:
+            except Exception as e:
+                print(e, ticker)
                 continue
     meta_df = pd.DataFrame(meta_data, columns=stock_feature_columns)
-    return meta_data
+    if N % 25==0:
+        meta_df.to_csv(f'meta_df_{N}_.csv', index=False)
+    N+=1
+    return meta_df
 
