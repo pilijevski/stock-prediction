@@ -2,5 +2,6 @@
 .idea/
 .ipynb_checkpoints/
 *.pyc
+.history
 lib/stocks/*
 __pycache__/*
