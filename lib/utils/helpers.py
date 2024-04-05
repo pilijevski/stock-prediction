@@ -128,7 +128,7 @@ def process_df(df):
     df = df[~df.index.str.contains("Current", regex=True)]
     df["year"] = pd.to_datetime(df.index).year
     df = df.T.drop_duplicates().T  # drop duplicate columns
-
+    df = df.loc[:, ~df.columns.duplicated()]
     return df
 
 def get_cols_to_be_divided_by_total_assets():

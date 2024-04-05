@@ -19,7 +19,7 @@ def build_stocks(stocks_path):
     stock_list = []
     if not os.path.exists("lib/stocks/{today_str}"):
         os.makedirs(f"lib/stocks/{today_str}", exist_ok=True)
-
+    from collections import Counter
     with tqdm(total=len(stock_names)) as pbar:
         for ticker in stock_names:
             pbar.set_description(f"{ticker}")
@@ -27,17 +27,16 @@ def build_stocks(stocks_path):
             if not os.path.exists(f"lib/stocks/{today_str}/{ticker}.csv"):
                 try:
                     stock_data = get_stock_data(ticker)
-                    stock_data['end_of_quarter'] = stock_data.index
-                    stock_data.to_csv(f"lib/stocks/{today_str}/{ticker}.csv", index=False)
+                    stock_data.to_csv(f"lib/stocks/{today_str}/{ticker}.csv")
                 except Exception as e:
                     print(f"Error with ticker: {ticker}")
                     continue
             else:
-                stock_data = pd.read_csv(f"lib/stocks/{today_str}/{ticker}.csv")
-
+                stock_data = pd.read_csv(f"lib/stocks/{today_str}/{ticker}.csv",index_col=0)
             stock_list.append(stock_data)
-            
-    return pd.concat(stock_list,axis=0).to_csv(stocks_path, index=False)
+    concat_df = pd.concat(stock_list,axis=0)
+    concat_df.to_csv(stocks_path)
+
 
 
 def get_meta_data(stock_symbols, stocks):
@@ -84,7 +83,7 @@ def get_meta_data(stock_symbols, stocks):
             stock_feature_columns = ['end_of_quarter', 'end_of_quarter_release', 'ticker', 'industry'] + ['increase']
 
             try:
-                hist = stock.history(start=earnings_date, end=earnings_date + DateOffset(months=6))
+                hist = stock.history(start=earnings_date, end=earnings_date + DateOffset(months=3))
                 next_quarter_increase = (hist['Close'][-1] - hist['Close'][0]) / hist['Close'][0]
                 stock_features += [next_quarter_increase]
                 meta_data.append(stock_features)
