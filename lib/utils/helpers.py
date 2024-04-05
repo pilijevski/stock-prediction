@@ -65,7 +65,7 @@ def extract_numerical_columns(df):
         try:
             pd.to_numeric(df[col], errors='raise')
             numerical_columns.append(col)
-        except ValueError:
+        except Exception:
             pass
     return numerical_columns
 
